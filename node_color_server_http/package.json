@@ -1,0 +1,18 @@
+{
+  "name": "nodeserver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.mjs",
+  "scripts": {
+    "start": "node app.mjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chroma": "0.0.1",
+    "chroma-js": "^2.1.2",
+    "express": "^4.17.1",
+    "express-ws": "^5.0.2",
+    "ws": "^8.2.3"
+  }
+}
