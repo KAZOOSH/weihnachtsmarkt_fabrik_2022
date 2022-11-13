@@ -9,15 +9,15 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <FastLED.h>
-#include <EthernetUdp.h>
+#include <Ethernet.h>
+#include "ESPAsyncUDP.h"
 
 const char* ssid = "kazoosh";
 const char* password = "ugabuga321#";
-String host = "192.168.178.21";
-const int httpPort = 3000;
-const int udpServerPort = 2390;
+const int localUdpPort = 2390;
+char packetBuffer[UDP_TX_PACKET_MAX_SIZE]; //buffer to hold incoming packet,
 
-EthernetUDP Udp;
+AsyncUDP udp;
 
 // Fastled WS2811
 // #define NUM_LEDS 52
@@ -34,21 +34,14 @@ int uniqueId = random(1, 30000);
 CRGB currentColor( CRGB::Black);
 CRGB nextColor( CRGB::Black);
 
-//Declare object of class HTTPClient
-HTTPClient http;  
-String Link = "http://" + host + ":" + String(httpPort) + "/color?id=" + uniqueId;
 void loop() {
- // EVERY_N_SECONDS(1) { udpPingToServer(); }
-  
-  
   EVERY_N_MILLISECONDS(50) { 
       blendToNextColor(1);
       //updateColorDiffArray();
       updateLEDS();
   }
+  
 }
-
-
 
 // blends current color to target color
 void blendToNextColor(int speed) {
@@ -66,20 +59,20 @@ int blendToNextColorValue(int current, int target, int speed) {
 }
 
 
-// send a request to server and update current color
-void requestColor() {
-  http.begin(Link);     //Specify request destination
-  int httpCode = http.GET();            //Send the request
-  String payload = http.getString();    //Get the response payload
-  // replace 
- 
-
-  payload.replace("[", "");
-  payload.replace("]", "");
-  nextColor = CRGB(255 * getValue(payload, ',', 0).toFloat(), 255 * getValue(payload, ',', 1).toFloat(), 255 * getValue(payload, ',', 2).toFloat());
-  //brightness = getValue(payload, ',', 3).toFloat();
-  http.end();  //Close connection
-}
+//// send a request to server and update current color
+//void requestColor() {
+//  http.begin(Link);     //Specify request destination
+//  int httpCode = http.GET();            //Send the request
+//  String payload = http.getString();    //Get the response payload
+//  // replace 
+// 
+//
+//  payload.replace("[", "");
+//  payload.replace("]", "");
+//  nextColor = CRGB(255 * getValue(payload, ',', 0).toFloat(), 255 * getValue(payload, ',', 1).toFloat(), 255 * getValue(payload, ',', 2).toFloat());
+//  //brightness = getValue(payload, ',', 3).toFloat();
+//  http.end();  //Close connection
+//}
 
 
 void updateLEDS()
@@ -114,51 +107,37 @@ String getValue(String data, char separator, int index)
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-void readUDP() {
-  int packetSize = Udp.parsePacket();
-  if (packetSize)
-  {
-    Serial.print("Received packet of size ");
-    Serial.println(packetSize);
-    Serial.print("From ");
-    IPAddress remote = Udp.remoteIP();
-    for (int i = 0; i < 4; i++)
-    {
-      Serial.print(remote[i], DEC);
-      if (i < 3)
-      {
-        Serial.print(".");
-      }
-    }
-    Serial.print(", port ");
-    Serial.println(Udp.remotePort());
 
-    // read the packet into packetBufffer
-    Udp.read(packetBuffer, UDP_TX_PACKET_MAX_SIZE);
-    Serial.println("Contents:");
-    Serial.println(packetBuffer);
-
-    // send a reply, to the IP address and port that sent us the packet we received
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write(ReplyBuffer);
-    Udp.endPacket();
-  }
-}
 
 void setupUDP() {
-    Udp.begin(localPort);
+  if(udp.listen(localUdpPort)) {
+        Serial.print("UDP Listening on IP: ");
+        Serial.println(WiFi.localIP());
+        udp.onPacket([](AsyncUDPPacket packet) {
+            Serial.print("UDP Packet Type: ");
+            Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
+            Serial.print(", From: ");
+            Serial.print(packet.remoteIP());
+            Serial.print(":");
+            Serial.print(packet.remotePort());
+            Serial.print(", To: ");
+            Serial.print(packet.localIP());
+            Serial.print(":");
+            Serial.print(packet.localPort());
+            Serial.print(", Length: ");
+            Serial.print(packet.length());
+            Serial.print(", Data: ");
+            Serial.write(packet.data(), packet.length());
+            Serial.println();
+            String colorString = String( (char*) packet.data());
+            int r = getValue(colorString,',',0).toInt();
+            int g = getValue(colorString,',',1).toInt();
+            int b = getValue(colorString,',',2).toInt();
+            nextColor = CRGB(r,g,b);
+        });
+    }
 }
 
-
-
-//// i am here ping to server
-//void udpPingToServer() {
-//  // todo ping server and add ip to client list
-//  // every 1-2 seconds
-//  udp.beginPacket(host, udpServerPort);
-//  udp.write("Hello");
-//  udp.endPacket();
-//}
 
 
 void setup() {
