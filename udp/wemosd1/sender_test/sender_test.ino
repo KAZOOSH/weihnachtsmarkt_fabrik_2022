@@ -34,8 +34,9 @@ void setup() {
 
 void loop()
 {
-    delay(5000);
+    delay(10000);
     String color = String(random(255)) + ',' + String(random(255)) + ',' + String(random(255));
     Serial.println("broadcast" + color);
     udp.broadcastTo(color.c_str(), localUdpPort);
+    delay(10000);
 }

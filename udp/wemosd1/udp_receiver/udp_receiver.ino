@@ -48,6 +48,11 @@ void blendToNextColor(int speed) {
    currentColor.r = blendToNextColorValue(currentColor.r, nextColor.r, speed);
    currentColor.g = blendToNextColorValue(currentColor.g, nextColor.g, speed);
    currentColor.b = blendToNextColorValue(currentColor.b, nextColor.b, speed);
+
+   // go back to black after color was shown
+   if(currentColor.r == nextColor.r && currentColor.g == nextColor.g && currentColor.b == nextColor.b){
+    nextColor = CRGB::Black;
+   }
 }
 
 // brings from value closer to to value on every call (blend from current to target)
@@ -82,9 +87,12 @@ void updateLEDS()
        if( random8() < 1) {
           leds[ random16(NUM_LEDS) ] += CRGB::White;
         }
-        leds[i].r = beatsin8(randomPerLed[i], _max(0,currentColor.r -30), _min(255,currentColor.r +30));
-        leds[i].g = beatsin8(randomPerLed[i], _max(0,currentColor.g -30), _min(255,currentColor.g +30));
-        leds[i].b = beatsin8(randomPerLed[i], _max(0,currentColor.b -30), _min(255,currentColor.b +30));
+
+        int amplitude = min(15, max(currentColor.r + currentColor.g + currentColor.b ,0));
+        
+        leds[i].r = beatsin8(randomPerLed[i], _max(0,currentColor.r -amplitude), _min(255,currentColor.r +amplitude));
+        leds[i].g = beatsin8(randomPerLed[i], _max(0,currentColor.g -amplitude), _min(255,currentColor.g +amplitude));
+        leds[i].b = beatsin8(randomPerLed[i], _max(0,currentColor.b -amplitude), _min(255,currentColor.b +amplitude));
     }
     
     FastLED.show(); 
