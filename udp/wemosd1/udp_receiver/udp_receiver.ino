@@ -13,7 +13,7 @@
 #include "ESPAsyncUDP.h"
 
 const char* ssid = "kazoosh";
-const char* password = "ugabuga321#";
+const char* password = "k42005h!!!";
 const int localUdpPort = 2390;
 char packetBuffer[UDP_TX_PACKET_MAX_SIZE]; //buffer to hold incoming packet,
 

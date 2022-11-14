@@ -2,7 +2,7 @@
 #include "ESPAsyncUDP.h"
 const int localUdpPort = 2390;
 const char * ssid = "kazoosh";
-const char * password = "ugabuga321#";
+const char * password = "k42005h!!!";
 
 AsyncUDP udp;
 
