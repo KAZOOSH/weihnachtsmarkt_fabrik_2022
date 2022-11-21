@@ -21,7 +21,7 @@ AsyncUDP udp;
 
 // Fastled WS2811
 // #define NUM_LEDS 52
-#define NUM_LEDS 10
+#define NUM_LEDS 15
 #define DATA_PIN 2
 
 CRGB leds[NUM_LEDS];
@@ -33,13 +33,26 @@ int uniqueId = random(1, 30000);
 
 CRGB currentColor( CRGB::Black);
 CRGB nextColor( CRGB::Black);
+CRGB nextColorAfterDelay (CRGB::Black);
+unsigned long nextColorUpdate = 0;
 
 void loop() {
   EVERY_N_MILLISECONDS(50) { 
       blendToNextColor(1);
       //updateColorDiffArray();
       updateLEDS();
+
+      if(random(1000) < 1 && currentColor.r == 0 && currentColor.g == 0 && currentColor.b == 0){
+        int randombrightness = random(75);
+        nextColor = CRGB(randombrightness, randombrightness, randombrightness);
+     }
   }
+  if(nextColorUpdate && (millis() > nextColorUpdate) ) {
+    nextColor = nextColorAfterDelay;
+    nextColorUpdate = 0;
+  }
+
+
   
 }
 
@@ -141,7 +154,8 @@ void setupUDP() {
             int r = getValue(colorString,',',0).toInt();
             int g = getValue(colorString,',',1).toInt();
             int b = getValue(colorString,',',2).toInt();
-            nextColor = CRGB(r,g,b);
+            nextColorAfterDelay = CRGB(r,g,b);
+            nextColorUpdate = millis() + random(10000); // random delayto turn to next color
         });
     }
 }
