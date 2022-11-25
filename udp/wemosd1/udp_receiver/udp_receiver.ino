@@ -27,9 +27,17 @@ AsyncUDP udp;
 CRGB leds[NUM_LEDS];
 CRGB diffs[NUM_LEDS]; // diffs from current collor (for wobble effect)
 int randomPerLed[NUM_LEDS];
-
 // generate an moderatly unique id ;) for this light
 int uniqueId = random(1, 30000);
+
+int maxDelayNextColorUpdate = 10000; // default value for maximum delay to set next colot (10s) .. dely will be set randomly 
+
+int blendSpeed = 10; // speed for color transition 
+int activateColorFade = 1; // 0 to disable color fade
+int sparklePropability = 1; // between 0 and 9
+int sparkleMaxValue = 200;
+int colorFadePropability = 1;
+int colorFadeMaxValue = 75;
 
 CRGB currentColor( CRGB::Black);
 CRGB nextColor( CRGB::Black);
@@ -38,12 +46,13 @@ unsigned long nextColorUpdate = 0;
 
 void loop() {
   EVERY_N_MILLISECONDS(50) { 
-      blendToNextColor(1);
-      //updateColorDiffArray();
+
+      blendToNextColor(blendSpeed);
       updateLEDS();
 
-      if(random(1000) < 1 && currentColor.r == 0 && currentColor.g == 0 && currentColor.b == 0){
-        int randombrightness = random(75);
+      // random color fade
+      if(random(1000) < colorFadePropability && currentColor.r == 0 && currentColor.g == 0 && currentColor.b == 0){
+        int randombrightness = random(colorFadeMaxValue);
         nextColor = CRGB(randombrightness, randombrightness, randombrightness);
      }
   }
@@ -51,9 +60,6 @@ void loop() {
     nextColor = nextColorAfterDelay;
     nextColorUpdate = 0;
   }
-
-
-  
 }
 
 // blends current color to target color
@@ -71,34 +77,20 @@ void blendToNextColor(int speed) {
 // brings from value closer to to value on every call (blend from current to target)
 int blendToNextColorValue(int current, int target, int speed) {
   if(current != target){
-    current = current + ((target - current) / abs(target - current)) * speed;
+    current = (10 * current + ((target - current) / abs(target - current))) * speed) /10;
   } 
   return current;
 }
-
-
-//// send a request to server and update current color
-//void requestColor() {
-//  http.begin(Link);     //Specify request destination
-//  int httpCode = http.GET();            //Send the request
-//  String payload = http.getString();    //Get the response payload
-//  // replace 
-// 
-//
-//  payload.replace("[", "");
-//  payload.replace("]", "");
-//  nextColor = CRGB(255 * getValue(payload, ',', 0).toFloat(), 255 * getValue(payload, ',', 1).toFloat(), 255 * getValue(payload, ',', 2).toFloat());
-//  //brightness = getValue(payload, ',', 3).toFloat();
-//  http.end();  //Close connection
-//}
 
 
 void updateLEDS()
 {  
 
     for( int i = 0; i < NUM_LEDS; i++) {
-       if( random8() < 1) {
-          leds[ random16(NUM_LEDS) ] += CRGB::White;
+
+       //sparkle 
+       if( random16() < 50 * sparklePropability) {
+          leds[ random16(NUM_LEDS) ] += CRGB(sparkleMaxValue,sparkleMaxValue,sparkleMaxValue);
         }
 
         int amplitude = min(15, max(currentColor.r + currentColor.g + currentColor.b ,0));
@@ -128,6 +120,54 @@ String getValue(String data, char separator, int index)
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
+/* 
+ *  possible messages: 
+ *  
+ *    color_255,0,0 // rgb values r,g,b ([0-255],[0-255],[0-255])
+ *    
+ *    randomDelay_10000 // maximum delay to set color in ms
+ *   
+ *    sparkle_2,100   // sparkle sparklePropability, sparkleMaxValue ([0-9],[0-255])
+ *  
+ *    blendSpeed_3 // speed of color blending ([0-9], 0 means no blending)
+ *    
+ *    colorFade_1,75 //  colorFadePropability, colorFadeMaxValue ([0-9],[0-255])
+ *    
+*/
+
+// process incomming udp message
+void processMessage(String udpMessage) {
+
+    String messageType = getValue(udpMessage,'_',0)
+    String message = getValue(udpMessage,'_',1)
+    
+    if (messageType === 'color') {
+      int r = getValue(message,',',0).toInt();
+      int g = getValue(message,',',1).toInt();
+      int b = getValue(message,',',2).toInt();
+      nextColorAfterDelay = CRGB(r,g,b);
+      nextColorUpdate = millis() + random(maxDelayNextColorUpdate); // random delayto turn to next color
+    }
+
+    if (messageType === 'sparkle') {
+      sparklePropability = getValue(message,',',0).toInt();
+      sparkleMaxValue = getValue(message,',',1).toInt();
+    }
+
+    if (messageType === 'blendSpeed') {
+      blendSpeed = message.toInt();
+    }
+
+    if (messageType === 'randomDelay') {
+      maxDelayNextColorUpdate = message.toInt();
+    }
+    if (messageType === 'colorFade') {
+      colorFadePropability = getValue(message,',',0).toInt();
+      colorFadeMaxValue = getValue(message,',',1).toInt();
+    }
+
+    
+}
 
 
 void setupUDP() {
@@ -150,30 +190,15 @@ void setupUDP() {
             Serial.print(", Data: ");
             Serial.write(packet.data(), packet.length());
             Serial.println();
-            String colorString = String( (char*) packet.data());
-            int r = getValue(colorString,',',0).toInt();
-            int g = getValue(colorString,',',1).toInt();
-            int b = getValue(colorString,',',2).toInt();
-            nextColorAfterDelay = CRGB(r,g,b);
-            nextColorUpdate = millis() + random(10000); // random delayto turn to next color
+            String message = String( (char*) packet.data());
+            processMessage(message)
         });
     }
 }
 
 
-
-void setup() {
-  FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS);
-
-  for(int i=0; i<NUM_LEDS; i++) {
-    randomPerLed[i] = 30 + random(0,10);
-  }
-
-  Serial.begin(115200);
-  delay(10);
-
-  // We start by connecting to a WiFi network
-
+void setupWifi() {
+    // We start by connecting to a WiFi network
   Serial.println();
   Serial.println();
   Serial.print("Connecting to ");
@@ -190,6 +215,19 @@ void setup() {
   Serial.println("WiFi connected");  
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+}
 
+void setup() {
+  FastLED.addLeds<WS2811, DATA_PIN, GRB>(leds, NUM_LEDS);
+
+  // array defining random sin amplitudes for each led
+  for(int i=0; i<NUM_LEDS; i++) {
+    randomPerLed[i] = 30 + random(0,10);
+  }
+
+  Serial.begin(115200);
+  delay(10);
+
+  setupWifi();
   setupUDP();
 }
