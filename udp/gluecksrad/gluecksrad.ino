@@ -108,7 +108,8 @@ void connectWifi(){
 }
 
 void sendColorValue(int r,int g, int b){
-  String builtString = String(r) + "," + String(g) + "," + String(b);
+  String builtString = "color_" + String(r) + "," + String(g) + "," + String(b);
+  Serial.println(builtString);
   // Send UDP Broadcast to 255.255.255.255 (default broadcast addr), Port 2255
   udp.broadcastTo(builtString.c_str(), 2390);
 }
@@ -260,7 +261,8 @@ void sending(){
   unsigned int t4 = 5000; // inactive time
 
   if(!isSendColor){
-    sendColorValue(colorSend[0],colorSend[1],colorSend[2]);
+    CRGB col =colorSend;
+    sendColorValue(col[0],col[1],col[2]);
     isSendColor = true;
   }
   if (t< t0){
@@ -280,7 +282,7 @@ void sending(){
   else if (t < t1+t0){
     t-=t0;
     float percentage = float(t)/float(t1);
-    Serial.println(percentage);
+    //Serial.println(percentage);
     for (int i=0; i<NUM_LEDS;i+=D_LEDS){
       CHSV col = colorSend;
       int v = getBrightnessForLed(i,percentage);
