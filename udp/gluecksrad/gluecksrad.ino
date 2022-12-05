@@ -108,7 +108,7 @@ void connectWifi(){
 }
 
 void sendColorValue(int r,int g, int b){
-  String builtString = "color_" + String(r) + "," + String(g) + "," + String(b);
+  String builtString = String(r) + "," + String(g) + "," + String(b);
   Serial.println(builtString);
   // Send UDP Broadcast to 255.255.255.255 (default broadcast addr), Port 2255
   udp.broadcastTo(builtString.c_str(), 2390);

@@ -21,7 +21,7 @@ AsyncUDP udp;
 
 // Fastled WS2811
 // #define NUM_LEDS 52
-#define NUM_LEDS 15
+#define NUM_LEDS 60
 #define DATA_PIN 2
 
 CRGB leds[NUM_LEDS];
@@ -97,7 +97,7 @@ void updateLEDS()
 {  
 
     for( int i = 0; i < NUM_LEDS; i++) {
-       if( random8() < 1) {
+       if( random16() < 50) {
           leds[ random16(NUM_LEDS) ] += CRGB::White;
         }
 
